@@ -1,0 +1,22 @@
+---
+  - name: create ansible user and deploy ssh key
+    hosts: lobes
+    vars:
+      ansible_password: 'Fuj1yam@'
+    gather_facts: no
+    remote_user: ron
+    become: true
+
+    tasks:
+      - name: add a new user named ansible
+        user: 
+          name: ansible
+          shell: /bin/bash
+          password: "{{ ansible_password }}"
+
+      - name: add ansible user to sudoers
+        copy:
+          dest: "/etc/sudoers.d/devops"
+          content: "ansible  ALL=(ALL)  NOPASSWD: ALL"
+          
+

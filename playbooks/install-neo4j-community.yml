@@ -1,0 +1,64 @@
+---
+- name: add neo4j repo
+  hosts: lobes
+  remote_user: ansible
+  become: true
+
+  tasks:
+  - name: subscribe for updates
+    community.general.redhat_subscription:
+     state: present
+     username: rdriscoll6220
+     password: Wh@dunn1t
+     auto_attach: true
+  
+  - name: check if neo4j.repo exists
+    stat:
+      path: /etc/yum.repos.d/neo4j.repo
+    register: result
+
+  - name: import repo key
+    ansible.builtin.rpm_key:
+      state: present
+      key: https://debian.neo4j.com/neotechnology.gpg.key
+  
+  - name: cp new file if not exists
+    ansible.builtin.copy:
+      src: /etc/yum.repos.d/neo4j.repo
+      dest: /etc/yum.repos.d/neo4j.repo
+    when: result.stat.exists == false
+
+  - name: install java 11 dep
+    yum:
+      name: java-11-openjdk-devel
+      state: latest
+  
+  - name: install neo4j community
+    yum:
+      name: neo4j
+      state: latest
+      
+  - name: default listen address
+    ansible.builtin.lineinfile:
+        path: /etc/neo4j/neo4j.conf
+        regexp: '#dbms\.default_listen_address='
+        line: dbms.default_listen_address=0.0.0.0
+
+  - name: open_firewalld_ports
+    firewalld:
+      permanent: yes
+      immediate: yes
+      port: "{{item.port}}/{{item.proto}}"
+      state: "{{item.state}}"
+      zone: "{{item.zone}}"
+    with_items:
+      - {port: "7474", proto: "tcp", state: "enabled", zone: "public" }
+      - {port: "7473", proto: "tcp", state: "enabled", zone: "public" }
+      - {port: "7687", proto: "tcp", state: "enabled", zone: "public" }
+      - {port: "6362", proto: "tcp", state: "enabled", zone: "public" }         
+
+  - name: restart_neo4j_service
+    ansible.builtin.service:
+      name: neo4j
+      state: restarted
+
